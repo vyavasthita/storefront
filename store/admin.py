@@ -45,6 +45,7 @@ class InventoryFilter(admin.SimpleListFilter):
 class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["title"]}
     search_fields = ["title"]
+
     # The collection drop down list could be very long hence we need to add search in collection field
     # so we do not need to create huge drop down list and rather we will search fields by 'title' of collection
     # in the drop down.
