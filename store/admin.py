@@ -1,5 +1,5 @@
 from typing import Any, List, Optional, Tuple
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models.query import QuerySet
 from django.http.request import HttpRequest
 from . import models
@@ -11,6 +11,7 @@ from django.urls import reverse
 @admin.register(models.Collection)
 class CollectionAdmin(admin.ModelAdmin):
     list_display = ["title", "total_products"]
+    search_fields = ["title"]  # For autocomplete fields in ProductAdmin
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).annotate(total_products=Count("products"))
@@ -41,9 +42,20 @@ class InventoryFilter(admin.SimpleListFilter):
 
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
+    prepopulated_fields = {"slug": ["title"]}
+    # The collection drop down list could be very long hence we need to add search in collection field
+    # so we do not need to create huge drop down list and rather we will search fields by 'title' of collection
+    # in the drop down.
+    # Hence we need to add 'collection' as autocomplete_fields and to do that we need to add 'title' in
+    # as search_fields in CollectionAdmin class.
+
+    # We need to add 'title' as search_fields in CollectionAdmin class (searching collection in dropdown list by title)
+    # because Django does not know how to search 'collection' field.
+    autocomplete_fields = ["collection"]
     actions = ["clear_inventory"]
     list_display = [
         "title",
+        "slug",
         "unit_price",
         "inventory",
         "inventory_status",
@@ -67,9 +79,10 @@ class ProductAdmin(admin.ModelAdmin):
     def clear_inventory(self, request: HttpRequest, queryset: QuerySet[Any]):
         updated_count = queryset.update(inventory=0)
 
-        self.message_user = (
+        self.message_user(
             request,
-            f"{updated_count} products were successfully updated."
+            f"{updated_count} product(s) were successfully updated.",
+            messages.ERROR,
         )
 
 
@@ -94,5 +107,6 @@ class CustomerAdmin(admin.ModelAdmin):
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ["placed_at", "payment_status", "customer"]
+    autocomplete_fields = ["customer"]
     list_per_page = 5
     list_editable = ["payment_status"]
