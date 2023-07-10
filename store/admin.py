@@ -6,6 +6,7 @@ from . import models
 from django.db.models.aggregates import Count
 from django.utils.html import format_html, urlencode
 from django.urls import reverse
+from django.core.validators import MinValueValidator
 
 
 @admin.register(models.Collection)
