@@ -44,6 +44,7 @@ class InventoryFilter(admin.SimpleListFilter):
 @admin.register(models.Product)
 class ProductAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ["title"]}
+    search_fields = ["title"]
     # The collection drop down list could be very long hence we need to add search in collection field
     # so we do not need to create huge drop down list and rather we will search fields by 'title' of collection
     # in the drop down.
@@ -52,6 +53,8 @@ class ProductAdmin(admin.ModelAdmin):
 
     # We need to add 'title' as search_fields in CollectionAdmin class (searching collection in dropdown list by title)
     # because Django does not know how to search 'collection' field.
+    # same is applied to search_fields = ["title"] because product attributes is being used by Order classAdmin
+    # by autocomplete_fields.
     autocomplete_fields = ["collection"]
     actions = ["clear_inventory"]
     list_display = [
@@ -105,9 +108,18 @@ class CustomerAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, customer.total_orders)
 
 
+class OrderItemInline(admin.TabularInline):
+    autocomplete_fields = ["product"]
+    model = models.OrderItem
+    # By default we will see 3 rows for inline items.
+    # If we do not want to see these 3 rows then we set extra to '0'.
+    extra = 0
+
+
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ["placed_at", "payment_status", "customer"]
+    inlines = [OrderItemInline]
     autocomplete_fields = ["customer"]
     list_per_page = 5
     list_editable = ["payment_status"]
