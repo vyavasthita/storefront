@@ -1,0 +1,47 @@
+version: '3'
+services:
+  mysql-db:
+    image: mysql:8.0.29
+    container_name: mysql-db
+    ports:
+      - "3308:3306"
+    environment:
+      - MYSQL_DATABASE=practice
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+
+    command: --init-file /data/application/init.sql
+    volumes:
+      - ./init.sql:/data/application/init.sql
+      - ./database/data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 3s
+      retries: 5
+  db-admin:
+    image: phpmyadmin:latest
+    container_name: mysql-db-admin
+    restart: always
+    environment:
+      PMA_HOST: mysql-db
+      PMA_USER: root
+    ports:
+      - "8080:80"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+  storefront:
+    build: .
+    container_name: storefront
+    ports:
+      - 5001:5001
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      - LOCAL_DEV=${LOCAL_DEV}
+      - CREATE_SUPER_USER=${CREATE_SUPER_USER}
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
+    volumes:
+      - ./:/app
