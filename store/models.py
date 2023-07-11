@@ -69,6 +69,7 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ["user__first_name", "user__last_name"]
+        permissions = [("view_history", "Can view history")]
 
     # These methods are defined because in CustomerAdmin class in store.admin,
     # we are using list_display = ["first_name", "last_name", "..."]
@@ -105,11 +106,9 @@ class Order(models.Model):
 
     def __str__(self) -> str:
         return f"Order By {self.customer.first_name} {self.customer.last_name}"
-    
+
     class Meta:
-        permissions = [
-            ('cancel_order', 'Can cancel order')
-        ]
+        permissions = [("cancel_order", "Can cancel order")]
 
 
 class OrderItem(models.Model):

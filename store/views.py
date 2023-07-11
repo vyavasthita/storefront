@@ -19,7 +19,13 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import (
+    IsAuthenticated,
+    AllowAny,
+    IsAdminUser,
+    DjangoModelPermissions,
+    DjangoModelPermissionsOrAnonReadOnly,
+)
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.mixins import (
@@ -45,6 +51,11 @@ from .serializers import (
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
 from .pagination import DefaultPagination
+from .permissions import (
+    IsAdminOrReadOnly,
+    FullDjangoModelPermissions,
+    ViewCustomerHistoryPermission,
+)
 
 
 class ProductViewSet(ModelViewSet):
@@ -56,6 +67,7 @@ class ProductViewSet(ModelViewSet):
     pagination_class = DefaultPagination
     search_fields = ["title"]
     ordering_fields = ["unit_price"]
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -74,6 +86,7 @@ class ProductViewSet(ModelViewSet):
 class CollectionViewSet(ModelViewSet):
     queryset = Collection.objects.annotate(products_count=Count("products"))
     serializer_class = CollectionSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_serializer_context(self):
         return {"request": self.request}
@@ -121,20 +134,22 @@ class CartItemViewSet(ModelViewSet):
             return CartItemReadSerializer
 
 
-class CustomerViewSet(
-    CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet
-):
+class CustomerViewSet(ModelViewSet):
     queryset = Customer.objects.all()
     serializer_class = CustomerSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]  # Only Admin can perform all action
+    # permission_classes = [DjangoModelPermissions]
+    # permission_classes = [FullDjangoModelPermissions]
+    # permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
 
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [AllowAny()]
-        return [IsAuthenticated()]
+    # def get_permissions(self):
+    #     if self.request.method == "GET":
+    #         return [AllowAny()]
+    #     return [IsAuthenticated()]
 
+    # Override permission, by allowing authenticated user to do GET and PUT for their profile
     # detail = True means it will work on customer/1/me, False means it will work on customer/me
-    @action(detail=False, methods=["GET", "PUT"])
+    @action(detail=False, methods=["GET", "PUT"], permission_classes=[IsAuthenticated])
     def me(self, request):
         (customer, created) = Customer.objects.get_or_create(user_id=request.user.id)
 
@@ -145,3 +160,7 @@ class CustomerViewSet(
             serializer.is_valid(raise_exception=True)
             serializer.save()
         return Response(serializer.data)
+
+    @action(detail=True, permission_classes=[ViewCustomerHistoryPermission])
+    def history(self, request, pk):
+        return Response("Ok")
