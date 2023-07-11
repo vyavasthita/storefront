@@ -20,4 +20,5 @@ then
 fi
 
 echo "Running django server"
+# gunicorn -c config/gunicorn/dev.py
 python manage.py runserver 0.0.0.0:5001
