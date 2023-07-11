@@ -95,6 +95,10 @@ class ProductAdmin(admin.ModelAdmin):
 class CustomerAdmin(admin.ModelAdmin):
     list_display = ["first_name", "last_name", "membership", "orders_count"]
     search_fields = ["first_name__istartswith", "last_name__istartswith"]
+    list_editable = ["membership"]
+    list_per_page = 10
+    list_select_related = ["user"] # To avoid sending separate query for user as used in ordering below
+    ordering = ["user__first_name", "user__last_name"]
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
         return super().get_queryset(request).annotate(total_orders=Count("orders"))

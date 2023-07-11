@@ -1,6 +1,8 @@
 from django.db import models
 from uuid import uuid4
 from django.core.validators import MinValueValidator
+from django.conf import settings
+from django.contrib import admin
 
 
 class Promotion(models.Model):
@@ -54,20 +56,33 @@ class Customer(models.Model):
         (MEMBERSHIP_SILVER, "Silver"),
         (MEMBERSHIP_GOLD, "Gold"),
     ]
-    first_name = models.CharField(max_length=255)
-    last_name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
     phone = models.CharField(max_length=255)
     birth_date = models.DateField(null=True)
     membership = models.CharField(
         max_length=1, choices=MEMBERSHIP_CHOICES, default=MEMBERSHIP_BRONZE
     )
 
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
     def __str__(self) -> str:
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.user.first_name} {self.user.last_name}"
 
     class Meta:
-        ordering = ["first_name", "last_name"]
+        ordering = ["user__first_name", "user__last_name"]
+
+    # These methods are defined because in CustomerAdmin class in store.admin,
+    # we are using list_display = ["first_name", "last_name", "..."]
+    # But first_name and last_name are from User Auth module and to access first_name and
+    # last_name attribute from User module, we need to use e.g. user__first_name but this
+    # support is not provided in list_display, hence we are creating these methods here.
+
+    @admin.display(ordering="user__first_name")
+    def first_name(self):
+        return self.user.first_name
+
+    @admin.display(ordering="user__last_name")
+    def last_name(self):
+        return self.user.last_name
 
 
 class Order(models.Model):
@@ -90,6 +105,11 @@ class Order(models.Model):
 
     def __str__(self) -> str:
         return f"Order By {self.customer.first_name} {self.customer.last_name}"
+    
+    class Meta:
+        permissions = [
+            ('cancel_order', 'Can cancel order')
+        ]
 
 
 class OrderItem(models.Model):

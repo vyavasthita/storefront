@@ -151,4 +151,4 @@ if DEBUG:
         "10.0.2.2",
     ]
 
-# AUTH_USER_MODEL = 'core.User'
+AUTH_USER_MODEL = 'core.User'
