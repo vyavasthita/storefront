@@ -1,6 +1,7 @@
 from decimal import Decimal
 from rest_framework import serializers
 from . import models
+from django.db import transaction
 
 
 class CollectionSerializer(serializers.ModelSerializer):
@@ -66,6 +67,7 @@ class CreateCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Cart
         fields = ["id"]
+        read_only_fields = ["id"]
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -137,3 +139,48 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Customer
         fields = ["id", "user", "phone", "birth_date", "membership"]
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(many=True)
+
+    class Meta:
+        model = models.Order
+        fields = ["id", "product", "quantity", "unit_price"]
+
+
+class OrderCreateSerializer(serializers.Serializer):
+    cart_id = serializers.UUIDField()
+
+    def save(self, **kwargs):
+        cart_id = self.validated_data["cart_id"]
+
+        with transaction.atomic():
+
+            (customer, created) = models.Customer.objects.get_or_create(
+                user_id=self.context["user_id"]
+            )
+            order = models.Order.objects.create(customer=customer)
+            cart_items = models.CartItem.objects.select_related("product").filter(
+                cart_id=cart_id
+            )
+
+            order_items = [
+                models.OrderItem(
+                    order=order,
+                    product=item.product,
+                    unit_price=item.product.unit_price,
+                    quantity=item.quantity,
+                )
+                for item in cart_items
+            ]
+            models.OrderItem.objects.bulk_create(order_items)
+            models.Cart.objects.filter(cart_id=cart_id).delete()
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+
+    class Meta:
+        model = models.Order
+        fields = ["id", "placed_at", "payment_status", "customer", "items"]

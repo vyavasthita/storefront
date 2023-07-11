@@ -47,6 +47,8 @@ from .serializers import (
     CartItemReadSerializer,
     CartItemUpdateSerializer,
     CustomerSerializer,
+    OrderSerializer,
+    OrderCreateSerializer,
 )
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
@@ -108,8 +110,8 @@ class CartViewSet(
     def get_serializer_class(self):
         if self.request.method == "POST":
             return CreateCartSerializer
-        else:
-            return CartSerializer
+
+        return CartSerializer
 
     queryset = Cart.objects.prefetch_related("cartitems__product").all()
 
@@ -130,8 +132,8 @@ class CartItemViewSet(ModelViewSet):
             return CartItemCreateSerializer
         elif self.request.method == "PATCH":
             return CartItemUpdateSerializer
-        else:
-            return CartItemReadSerializer
+
+        return CartItemReadSerializer
 
 
 class CustomerViewSet(ModelViewSet):
@@ -164,3 +166,25 @@ class CustomerViewSet(ModelViewSet):
     @action(detail=True, permission_classes=[ViewCustomerHistoryPermission])
     def history(self, request, pk):
         return Response("Ok")
+
+
+class OrderViewSet(ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all()
+        (customer_id, created) = Customer.objects.only("id").get_or_create(
+            user_id=user.id
+        )
+        return Order.objects.filter(customer_id=customer_id)
+
+    def get_serializer_context(self):
+        return {"user_id": self.request.user.id}
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return OrderCreateSerializer
+        return OrderSerializer
