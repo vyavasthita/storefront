@@ -49,6 +49,7 @@ from .serializers import (
     CustomerSerializer,
     OrderSerializer,
     OrderCreateSerializer,
+    OrderUpdateSerializer,
 )
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
@@ -169,7 +170,7 @@ class CustomerViewSet(ModelViewSet):
 
 
 class OrderViewSet(ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
         user = self.request.user
@@ -183,6 +184,8 @@ class OrderViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == "POST":
             return OrderCreateSerializer
+        elif self.request.method == "PATCH":
+            return OrderUpdateSerializer
         return OrderSerializer
 
     def create(self, request, *args, **kwargs):
@@ -193,3 +196,8 @@ class OrderViewSet(ModelViewSet):
         order = serializer.save()
         serializer = OrderSerializer(order)
         return Response(serializer.data)
+
+    def get_permissions(self):
+        if self.request.method in ["PUT", "PATCH", "DELETE"]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
