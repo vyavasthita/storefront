@@ -5,6 +5,7 @@ from .views import (
     ReviewViewSet,
     CartViewSet,
     CartItemViewSet,
+    CustomerViewSet,
 )
 from rest_framework_nested.routers import (
     NestedSimpleRouter,
@@ -16,7 +17,7 @@ router = DefaultRouter()
 router.register("product", ProductViewSet, basename="product")
 router.register("collection", CollectionViewSet)
 router.register("cart", CartViewSet)
-# router.register("cartitem", CartItemViewSet)
+router.register("customer", CustomerViewSet, basename="customer")
 
 product_router = NestedSimpleRouter(router, "product", lookup="product")
 product_router.register("review", ReviewViewSet, basename="product-reviews")

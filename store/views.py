@@ -19,13 +19,16 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.mixins import (
     CreateModelMixin,
     RetrieveModelMixin,
     DestroyModelMixin,
+    UpdateModelMixin,
 )
+from rest_framework.decorators import action
 from rest_framework.generics import GenericAPIView
 from django_filters.rest_framework import DjangoFilterBackend
 from .serializers import (
@@ -37,6 +40,7 @@ from .serializers import (
     CartItemCreateSerializer,
     CartItemReadSerializer,
     CartItemUpdateSerializer,
+    CustomerSerializer,
 )
 from rest_framework.pagination import PageNumberPagination
 from .filters import ProductFilter
@@ -89,11 +93,11 @@ class CartViewSet(
     CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, GenericViewSet
 ):
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return CreateCartSerializer
         else:
             return CartSerializer
-    
+
     queryset = Cart.objects.prefetch_related("cartitems__product").all()
 
 
@@ -115,3 +119,29 @@ class CartItemViewSet(ModelViewSet):
             return CartItemUpdateSerializer
         else:
             return CartItemReadSerializer
+
+
+class CustomerViewSet(
+    CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet
+):
+    queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    # permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    # detail = True means it will work on customer/1/me, False means it will work on customer/me
+    @action(detail=False, methods=["GET", "PUT"])
+    def me(self, request):
+        (customer, created) = Customer.objects.get_or_create(user_id=request.user.id)
+
+        if request.method == "GET":
+            serializer = CustomerSerializer(customer)
+        elif request.method == "PUT":
+            serializer = CustomerSerializer(customer, request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response(serializer.data)
